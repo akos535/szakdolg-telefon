@@ -22,7 +22,7 @@ fun ConnectPage() {
 	) {
 		val connViewModel: ConnectionViewModel = viewModel()
 		Button(
-			onClick = { connViewModel.connect("192.168.1.55") },
+			onClick = { connViewModel.connect("192.168.100.13") },
 			enabled = connViewModel.status.collectAsState().value == "Disconnected",
 			modifier = Modifier.padding(top = 30.dp).fillMaxWidth()
 		) {

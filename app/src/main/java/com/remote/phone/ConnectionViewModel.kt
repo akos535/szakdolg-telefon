@@ -12,6 +12,8 @@ class ConnectionViewModel : ViewModel() {
 	private val _lastMessage = MutableStateFlow("")
 	val lastMessage = _lastMessage.asStateFlow()
 
+	val lang = "HU"
+
 	private val connection = ConnectPc(
 		onStatus = { _status.value = it },
 		onMessage = { _lastMessage.value = it }
@@ -23,7 +25,17 @@ class ConnectionViewModel : ViewModel() {
 
 	fun playPause() {
 		val message = JSONObject()
-			.put("type", "media.playPause")
+			.put("type", "keyboard.press")
+			.put("payload", "MEDIA_PLAY_PAUSE")
+			.toString()
+
+		connection.send(message)
+	}
+
+	fun keypress(letter : String) {
+		val message = JSONObject()
+			.put("type", "keyboard.press")
+			.put("payload", letter)
 			.toString()
 
 		connection.send(message)

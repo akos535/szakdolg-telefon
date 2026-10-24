@@ -75,6 +75,6 @@ enum class AppDestinations(
     val label: String,
     val icon: ImageVector
 ) {
-    HOME("Placeholder", Icons.Outlined.Home),
+    HOME("Home", Icons.Outlined.Home),
     CONNECT("Csatlakozás", Icons.Outlined.Settings)
 }

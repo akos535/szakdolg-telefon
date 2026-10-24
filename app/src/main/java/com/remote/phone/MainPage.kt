@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.remote.phone.panels.KeyboardControlPanel
 import com.remote.phone.panels.MediaControlPanel
 import com.remote.phone.panels.TouchpadControlPanel
 
@@ -91,5 +92,6 @@ enum class ControlPanels(
 	val content: @Composable () -> Unit
 ) {
 	MEDIA("Media", { MediaControlPanel() }),
+	KEYBOARD("Keyboard", { KeyboardControlPanel() }),
 	TOUCHPAD("Touchpad", { TouchpadControlPanel() })
 }
