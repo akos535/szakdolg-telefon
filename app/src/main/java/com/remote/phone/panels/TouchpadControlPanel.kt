@@ -60,7 +60,7 @@ fun TouchpadControlPanel(connectionViewModel: ConnectionViewModel = viewModel())
 			modifier = Modifier.padding(horizontal = 15.dp)
 		) {
 			Button(
-				onClick = {connectionViewModel.keypress("LBUTTON")},
+				onClick = {connectionViewModel.mouseClick("left")},
 				modifier = Modifier.weight(1f)
 					.padding(5.dp)
 					.dropShadow(
@@ -75,7 +75,7 @@ fun TouchpadControlPanel(connectionViewModel: ConnectionViewModel = viewModel())
 				shape = RoundedCornerShape(8.dp)
 			) { }
 			Button(
-				onClick = {connectionViewModel.keypress("RBUTTON")},
+				onClick = {connectionViewModel.mouseClick("right")},
 				modifier = Modifier.weight(1f)
 					.padding(5.dp)
 					.dropShadow(

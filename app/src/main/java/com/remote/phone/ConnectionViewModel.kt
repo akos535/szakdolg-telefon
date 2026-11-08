@@ -75,6 +75,19 @@ class ConnectionViewModel : ViewModel() {
 		}
 	}
 
+	fun mouseClick(button: String) {
+		val message = JSONObject()
+			.put("type", "mouse.click")
+			.put("payload",
+				JSONObject()
+					.put("button", button))
+			.toString()
+
+		viewModelScope.launch {
+			connection.send(message)
+		}
+	}
+
 	private fun handleMessage(text: String) {
 		android.util.Log.d(
 			"RemoteMedia",
