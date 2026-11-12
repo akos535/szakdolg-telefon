@@ -1,17 +1,29 @@
 package com.remote.phone
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.shadow.Shadow
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
@@ -19,37 +31,70 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 fun ConnectPage(connectionViewModel: ConnectionViewModel = viewModel()) {
 
 	val computers by connectionViewModel.discoveredPcs.collectAsState()
+	val connViewModel: ConnectionViewModel = viewModel()
+	val connected by connectionViewModel.connected.collectAsState()
+	var searched = false
+
+	Box(
+		modifier = Modifier
+			.fillMaxWidth()
+			.background(Color(100, 100,255), shape = RoundedCornerShape(bottomStart = 10.dp, bottomEnd = 10.dp))
+	) {
+		Text(
+			if(connected == "") {
+				"Not connected"
+			} else {
+				"Connected to: $connected"
+			},
+			modifier = Modifier.padding(top = 40.dp, bottom = 10.dp).fillMaxWidth(),
+			textAlign = TextAlign.Center
+		)
+	}
 
 	Column(
 		modifier = Modifier.padding(40.dp)
 	) {
-		val connViewModel: ConnectionViewModel = viewModel()
-		Button(
-			onClick = { connViewModel.connect("192.168.1.57") },
-			enabled = connViewModel.status.collectAsState().value == "Disconnected",
-			modifier = Modifier.padding(top = 30.dp).fillMaxWidth()
-		) {
-			Text("Connect.")
-		}
-		Button(
-			onClick = { connViewModel.disconnect() },
-			enabled = connViewModel.status.collectAsState().value == "Connected",
-			modifier = Modifier.padding(top = 60.dp).fillMaxWidth()
-		) {
-			Text("Disconnect.")
-		}
 
 		Button(
-			onClick = { connectionViewModel.discoverPcs() },
+			onClick = {
+				connectionViewModel.discoverPcs()
+				searched = true
+					  },
 			modifier = Modifier.padding(top = 60.dp).fillMaxWidth()
 		) {
 			Text("PC search")
 		}
 
 		computers.forEach { pc ->
-			Button(onClick = { connectionViewModel.connect(pc.ip) }) {
+			Button(
+				onClick = {
+					connectionViewModel.connect(pc.ip, pc.name)
+						  }
+			) {
 				Text("${pc.name} — ${pc.ip}")
 			}
+		}
+
+		Box (
+			modifier = Modifier.fillMaxWidth()
+		) {
+			Text(
+				if(searched && computers.isEmpty()) {
+					"No computers have been found."
+				} else {
+					""
+				},
+				color = Color.Red
+			)
+		}
+
+
+		Button(
+			onClick = { connViewModel.disconnect() },
+			enabled = connViewModel.status.collectAsState().value == "Connected",
+			modifier = Modifier.padding(top = 60.dp).fillMaxWidth()
+		) {
+			Text("Disconnect.")
 		}
 	}
 

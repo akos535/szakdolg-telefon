@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import okio.IOException
+import org.json.JSONArray
 import org.json.JSONObject
 
 class ConnectionViewModel : ViewModel() {
@@ -22,6 +23,9 @@ class ConnectionViewModel : ViewModel() {
 	private val pcDiscovery = PcDiscovery()
 	private val _discoveredPcs = MutableStateFlow<List<PcInfo>>(emptyList())
 	val discoveredPcs = _discoveredPcs.asStateFlow()
+
+	private val _connected = MutableStateFlow("")
+	val connected = _connected.asStateFlow()
 
 	fun discoverPcs() {
 		viewModelScope.launch {
@@ -40,7 +44,8 @@ class ConnectionViewModel : ViewModel() {
 
 	private val udpConnection = UdpConnection()
 
-	fun connect(ip: String) {
+	fun connect(ip: String, name: String) {
+		_connected.value = "$name - $ip"
 		viewModelScope.launch {
 			connection.connect(ip)
 			udpConnection.connect(ip)
@@ -50,6 +55,7 @@ class ConnectionViewModel : ViewModel() {
 	fun disconnect() {
 		connection.disconnect()
 		udpConnection.close()
+		_connected.value = ""
 	}
 
 	fun keypress(letter : String) {
@@ -81,6 +87,17 @@ class ConnectionViewModel : ViewModel() {
 			.put("payload",
 				JSONObject()
 					.put("button", button))
+			.toString()
+
+		viewModelScope.launch {
+			connection.send(message)
+		}
+	}
+
+	fun executeMacro(steps: JSONArray) {
+		val message = JSONObject()
+			.put("type", "macro.execute")
+			.put("payload", JSONObject().put("steps", steps))
 			.toString()
 
 		viewModelScope.launch {

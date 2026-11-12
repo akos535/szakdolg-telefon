@@ -26,6 +26,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,8 +40,11 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.remote.phone.ConnectionViewModel
 
@@ -80,6 +84,19 @@ fun MediaControlPanel(connectionViewModel: ConnectionViewModel = viewModel()) {
 					filterQuality = FilterQuality.High
 				)
 			}
+		}
+
+		Row(
+			modifier = Modifier.fillMaxWidth().padding(10.dp),
+			horizontalArrangement = Arrangement.Center
+		) {
+			Text(mediaInfo?.title ?: "Nothing is playing", fontSize = 20.sp)
+		}
+		Row(
+			modifier = Modifier.fillMaxWidth().padding(5.dp),
+			horizontalArrangement = Arrangement.Center,
+		) {
+			Text(mediaInfo?.artist ?: "", fontSize = 15.sp)
 		}
 
 		Row(
