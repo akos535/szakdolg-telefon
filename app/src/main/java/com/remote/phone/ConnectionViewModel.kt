@@ -43,10 +43,10 @@ class ConnectionViewModel : ViewModel() {
 
 	private val udpConnection = UdpConnection()
 
-	fun connect(ip: String, name: String) {
+	fun connect(ip: String, name: String, webSocketPort: Int) {
 		_connected.value = "$name - $ip"
 		viewModelScope.launch {
-			connection.connect(ip)
+			connection.connect(ip, webSocketPort)
 			udpConnection.connect(ip)
 		}
 	}

@@ -21,7 +21,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,7 +29,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -42,12 +40,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.remote.phone.ConnectionViewModel
 import com.remote.phone.data.storage.MacroStep
 import com.remote.phone.data.storage.SavedMacro
-import org.json.JSONArray
-import org.json.JSONObject
 import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,11 +72,11 @@ fun MacroEditor(
 		"Ctrl" to "CONTROL",
 		"Enter" to "RETURN",
 		"Win" to "LWIN",
-		"A" to "A",
-		"B" to "B",
-		"C" to "C",
-		"D" to "D",
-		"E" to "E"
+		"Alt" to "LMENU",
+		"AltGr" to "RMENU",
+		"A" to "A", "B" to "B", "C" to "C", "D" to "D", "E" to "E", "F" to "F", "G" to "G", "H" to "H", "I" to "I",
+		"J" to "J", "K" to "K", "L" to "L", "M" to "M", "N" to "N", "O" to "O", "P" to "P", "Q" to "Q", "R" to "R",
+		"S" to "S", "T" to "T", "U" to "U", "V" to "V", "W" to "W", "X" to "X", "Y" to "Y", "Z" to "Z"
  	)
 
 	Column(

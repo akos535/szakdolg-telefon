@@ -13,7 +13,7 @@ class ConnectPc(
 	private val client = OkHttpClient()
 	private var socket: WebSocket? = null
 
-	fun connect(ip: String, port: Int = 5000) {
+	fun connect(ip: String, port: Int) {
 		socket?.cancel()
 
 		val request = Request.Builder()

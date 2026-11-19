@@ -68,7 +68,6 @@ class PcDiscovery {
 					if (response.optString("requestId") != requestId)
 						continue
 
-					// The reply packet tells us the PC's IP address.
 					val ip = responsePakcet.address.hostAddress ?: continue
 					val name = response.optString("name")
 					val webSocketPort = response.optInt("webSocketPort", 0)
