@@ -2,8 +2,7 @@ package com.remote.phone
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.remote.phone.datamodels.MediaInfo
-import kotlinx.coroutines.CoroutineScope
+import com.remote.phone.data.storage.MediaInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch

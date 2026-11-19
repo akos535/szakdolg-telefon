@@ -1,347 +1,204 @@
 package com.remote.phone.panels
 
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.rememberLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.remote.phone.ConnectionViewModel
-import com.remote.phone.datamodels.MacroStep
+import com.remote.phone.data.storage.MacroStorage
+import com.remote.phone.data.storage.SavedMacro
+import com.remote.phone.data.storage.stepsToJson
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import org.json.JSONArray
-import org.json.JSONObject
 
 @Composable
 fun MacroControlPanel(
 	connectionViewModel: ConnectionViewModel = viewModel(),
 	onExecuteMacro: (JSONArray) -> Unit = { steps: JSONArray -> connectionViewModel.executeMacro(steps)}
 ) {
-	val steps = remember { mutableStateListOf<MacroStep>() }
+	val context = LocalContext.current
+	val scope = rememberCoroutineScope()
+	val storage = remember { MacroStorage(context.applicationContext) }
+	var macros by remember { mutableStateOf<List<SavedMacro>>(emptyList()) }
 
-	var rowHeightPx by remember { mutableIntStateOf(0) }
+	var isLoaded by remember { mutableStateOf(false) }
+	var isSaving by remember { mutableStateOf(false) }
+	var editMode by remember { mutableStateOf(false) }
 
-	val allStepsValid = steps.all { step ->
-		when (step) {
-			is MacroStep.KeyDown -> step.key.isNotBlank()
-			is MacroStep.KeyUp -> step.key.isNotBlank()
-			is MacroStep.Delay -> step.milliseconds.toIntOrNull()?.let { it in 0..60000 } == true
+	var editingMacro by remember { mutableStateOf<SavedMacro?>(null) }
+	var editorOpen by remember { mutableStateOf(false) }
+
+	var errorMessage by remember {mutableStateOf<String?>(null)}
+
+	LaunchedEffect(storage) {
+		try {
+			macros = storage.load()
+			isLoaded = true
+		} catch (ex: CancellationException) {
+			throw ex
+		} catch (ex: Exception) {
+			errorMessage = "Couldn't load macros: ${ex.message}"
 		}
 	}
 
-	val keys = listOf(
-		"Shift" to "SHIFT",
-		"Ctrl" to "CONTROL",
-		"Enter" to "RETURN",
-		"Win" to "LWIN",
-		"A" to "A",
-		"B" to "B",
-		"C" to "C",
-		"D" to "D",
-	)
-
 	Column(
-		modifier = Modifier
-			.fillMaxSize()
-			.verticalScroll(rememberScrollState())
-			.padding(16.dp),
+		modifier = Modifier.fillMaxSize().padding(16.dp),
 		verticalArrangement = Arrangement.spacedBy(8.dp)
 	) {
-		Text("Add a step:")
-
-		Row(
-			modifier = Modifier.fillMaxWidth(),
-			horizontalArrangement = Arrangement.spacedBy(4.dp)
-		) {
-			TextButton(
-				onClick = { steps.add(MacroStep.KeyDown()) }
-			) {
-				Text("Key down")
-			}
-
-			TextButton(
-				onClick = { steps.add(MacroStep.KeyUp()) }
-			) {
-				Text("Key up")
-			}
-
-			TextButton(
-				onClick = { steps.add(MacroStep.Delay()) }
-			) {
-				Text("Delay")
-			}
+		errorMessage?.let { message ->
+			Text(text = message, color = MaterialTheme.colorScheme.error)
 		}
 
-		if (steps.isEmpty()) {
-			Text("Your macro has no steps yet.")
-		}
+		if(editorOpen) {
+			MacroEditor(
+				initialMacro = editingMacro,
+				onCancel = {
+					if(!isSaving) {
+						editorOpen = false
+						editingMacro = null
+					}
+				},
+				onSave = {savedMacro ->
+					if(!isSaving) {
+						isSaving = true
 
-		steps.toList().forEach { step ->
-			key(step.id) {
-				Card(
-					modifier = Modifier
-						.fillMaxWidth()
-						.height(88.dp)
-						.onSizeChanged { size ->
-							rowHeightPx = size.height
+						val updatedMacros =
+							if (macros.any {it.id == savedMacro.id}) {
+								macros.map {existing ->
+									if(existing.id == savedMacro.id) {
+										savedMacro
+									} else {
+										existing
+									}
+								}
+							} else {
+								macros + savedMacro
+							}
+						scope.launch {
+							try {
+								storage.save(updatedMacros)
+
+								macros = updatedMacros
+								editorOpen = false
+								editingMacro = null
+								errorMessage = null
+							} catch (ex: CancellationException) {
+								throw ex
+							} catch (ex: Exception) {
+								errorMessage = "Couldn't save macro: ${ex.message}"
+							} finally {
+								isSaving = false
+							}
 						}
-				) {
-					Row(
-						modifier = Modifier
-							.fillMaxSize()
-							.padding(horizontal = 4.dp),
-						verticalAlignment = Alignment.CenterVertically
+					}
+				},
+				onDelete = {
+					val deletedMacro = editingMacro
+
+					if(deletedMacro != null && !isSaving) {
+						isSaving = true
+						val updatedMacros = macros.filterNot {it.id == deletedMacro.id}
+
+						scope.launch {
+							try {
+								storage.save(updatedMacros)
+
+								macros = updatedMacros
+								editingMacro = null
+								editorOpen = false
+								errorMessage = null
+							} catch (ex: CancellationException) {
+								throw ex
+							} catch (ex: Exception) {
+								errorMessage = "Couldn't delete macro: ${ex.message}"
+							} finally {isSaving = false}
+						}
+					}
+				}
+			)
+		} else {
+			Row(
+				modifier = Modifier.fillMaxWidth(),
+				horizontalArrangement = Arrangement.SpaceBetween,
+				verticalAlignment = Alignment.CenterVertically
+			) {
+				Text("Edit mode")
+
+				Switch(
+					checked = editMode,
+					onCheckedChange = {editMode = it},
+					enabled = isLoaded
+				)
+			}
+			Text(
+				text =
+					if(editMode) { "Tap a macro to edit it."}
+					else { "Tap a macro to run it." }
+			)
+
+			if(!isLoaded && errorMessage == null) { Text("Loading macros...") }
+			if(isLoaded && macros.isEmpty()) { Text("No macros saved yet.") }
+
+			Column(
+				modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
+				verticalArrangement = Arrangement.spacedBy(8.dp)
+			) {
+				macros.forEach { macro ->
+					Card(
+						modifier = Modifier.fillMaxWidth().height(88.dp)
+							.clickable{
+								if(editMode) {
+									editingMacro = macro
+									editorOpen = true
+								} else {
+									connectionViewModel.executeMacro(stepsToJson(macro.steps))
+								}
+							}
 					) {
-						Box(
-							modifier = Modifier
-								.size(width = 48.dp, height = 64.dp)
-								.pointerInput(step.id) {
-									var draggedDistance = 0f
-
-									detectDragGestures(
-										onDragStart = {
-											draggedDistance = 0f
-										},
-										onDragEnd = {
-											draggedDistance = 0f
-										},
-										onDragCancel = {
-											draggedDistance = 0f
-										},
-										onDrag = { change, dragAmount ->
-											change.consume()
-											draggedDistance += dragAmount.y
-
-											val threshold =
-												rowHeightPx.toFloat() + 8.dp.toPx()
-
-											if (threshold <= 0f) {
-												return@detectDragGestures
-											}
-											var index = steps.indexOfFirst {
-												it.id == step.id
-											}
-
-											while (
-												index >= 0 &&
-												draggedDistance >= threshold &&
-												index < steps.lastIndex
-											) {
-												val item = steps.removeAt(index)
-												steps.add(index + 1, item)
-
-												draggedDistance -= threshold
-												index++
-											}
-
-											while (
-												index > 0 &&
-												draggedDistance <= -threshold
-											) {
-												val item = steps.removeAt(index)
-												steps.add(index - 1, item)
-
-												draggedDistance += threshold
-												index--
-											}
-										}
-									)
-								},
-							contentAlignment = Alignment.Center
+						Row(
+							modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+							verticalAlignment = Alignment.CenterVertically
 						) {
-							Text(
-								text = "☰",
-								style = MaterialTheme.typography.titleLarge
-							)
-						}
-
-						when (step) {
-							is MacroStep.KeyDown -> {
-								var expanded by remember {mutableStateOf(false)}
-								val selectedKey = keys.firstOrNull {it.second == step.key}?.first ?: "Select a key"
-
-								Box(modifier = Modifier.weight(1f)) {
-									OutlinedButton(
-										onClick = { expanded = true },
-										modifier = Modifier.fillMaxWidth()
-									) {
-										Text("Key down: $selectedKey")
-									}
-
-									DropdownMenu(
-										expanded = expanded,
-										onDismissRequest = { expanded = false }
-									) {
-										keys.forEach { (label, value) ->
-											DropdownMenuItem(
-												text = { Text(label) },
-												onClick = {
-													val index = steps.indexOfFirst {
-														it.id == step.id
-													}
-
-													if (index != -1) {
-														steps[index] = step.copy(key = value)
-													}
-
-													expanded = false
-												}
-											)
-										}
-									}
-								}
-							}
-
-							is MacroStep.KeyUp -> {
-								var expanded by remember {mutableStateOf(false)}
-								val selectedKey = keys.firstOrNull {it.second == step.key}?.first ?: "Select a key"
-
-								Box(modifier = Modifier.weight(1f)) {
-									OutlinedButton(
-										onClick = { expanded = true },
-										modifier = Modifier.fillMaxWidth()
-									) {
-										Text("Key up: $selectedKey")
-									}
-
-									DropdownMenu(
-										expanded = expanded,
-										onDismissRequest = { expanded = false }
-									) {
-										keys.forEach { (label, value) ->
-											DropdownMenuItem(
-												text = { Text(label) },
-												onClick = {
-													val index = steps.indexOfFirst {
-														it.id == step.id
-													}
-
-													if (index != -1) {
-														steps[index] = step.copy(key = value)
-													}
-
-													expanded = false
-												}
-											)
-										}
-									}
-								}
-							}
-
-							is MacroStep.Delay -> {
-								OutlinedTextField(
-									value = step.milliseconds,
-									onValueChange = { newValue ->
-										val index = steps.indexOfFirst {
-											it.id == step.id
-										}
-
-										if (index != -1) {
-											steps[index] = step.copy(
-												milliseconds = newValue
-											)
-										}
-									},
-									label = { Text("Delay (ms)") },
-									placeholder = { Text("e.g. 300") },
-									singleLine = true,
-									keyboardOptions = KeyboardOptions(
-										keyboardType = KeyboardType.Number
-									),
-									modifier = Modifier.weight(1f)
-								)
-							}
-						}
-
-						IconButton(
-							onClick = {
-								val index = steps.indexOfFirst {
-									it.id == step.id
-								}
-
-								if (index != -1) {
-									steps.removeAt(index)
-								}
-							}
-						) {
-							Text("✕")
+							Text(macro.name)
 						}
 					}
 				}
 			}
-		}
-
-		Button(
-			onClick = {
-				val jsonSteps = JSONArray()
-
-				steps.forEach { step ->
-					val jsonStep = when (step) {
-						is MacroStep.KeyDown -> {
-							JSONObject()
-								.put("type", "keyboard.down")
-								.put("payload", step.key.trim())
-						}
-
-						is MacroStep.KeyUp -> {
-							JSONObject()
-								.put("type", "keyboard.up")
-								.put("payload", step.key.trim())
-						}
-
-						is MacroStep.Delay -> {
-							JSONObject()
-								.put("type", "delay")
-								.put(
-									"payload",
-									JSONObject().put(
-										"milliseconds",
-										step.milliseconds.toInt()
-									)
-								)
-						}
-					}
-
-					jsonSteps.put(jsonStep)
-				}
-
-				onExecuteMacro(jsonSteps)
-			},
-			enabled = steps.isNotEmpty() && allStepsValid,
-			modifier = Modifier.fillMaxWidth()
-		) {
-			Text("Run macro")
+			Button(
+				onClick = {
+					editingMacro = null
+					editorOpen = true
+				},
+				enabled = isLoaded,
+				modifier = Modifier.fillMaxWidth()
+			) {
+				Text("New macro")
+			}
 		}
 	}
 }

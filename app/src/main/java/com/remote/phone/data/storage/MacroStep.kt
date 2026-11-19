@@ -1,4 +1,4 @@
-package com.remote.phone.datamodels
+package com.remote.phone.data.storage
 
 import java.util.UUID
 
@@ -20,3 +20,9 @@ sealed interface MacroStep {
 		val milliseconds: String = ""
 	): MacroStep
 }
+
+data class SavedMacro(
+	val id: String = UUID.randomUUID().toString(),
+	val name: String,
+	val steps: List<MacroStep>
+)
