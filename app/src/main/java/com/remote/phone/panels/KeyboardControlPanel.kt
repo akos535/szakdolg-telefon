@@ -9,8 +9,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.filled.KeyboardCapslock
+import androidx.compose.material.icons.outlined.KeyboardCapslock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -24,18 +31,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.remote.phone.ConnectionViewModel
+import org.json.JSONArray
+import org.json.JSONObject
 
 private enum class KeyboardPage {
 	Letters,
-	Numbers,
 	AccentedLetters
 }
-
 
 @Composable
 fun KeyboardControlPanel(connectionViewModel: ConnectionViewModel = viewModel()) {
 
 	var page by remember { mutableStateOf(KeyboardPage.Letters) }
+
+	var shift by remember {mutableStateOf(false)}
+	var control by remember {mutableStateOf(false)}
+	var windows by remember {mutableStateOf(false)}
+	var alt by remember {mutableStateOf(false)}
+	var altGr by remember {mutableStateOf(false)}
 
 	val topLetterKeys = listOf(
 		"q" to "Q", "w" to "W", "e" to "E", "r" to "R", "t" to "T",
@@ -63,27 +76,135 @@ fun KeyboardControlPanel(connectionViewModel: ConnectionViewModel = viewModel())
 	)
 
 	Column(
-		modifier = Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 10.dp),
+		modifier = Modifier
+			.fillMaxSize()
+			.padding(horizontal = 10.dp, vertical = 10.dp),
 		verticalArrangement = Arrangement.Bottom,
 		horizontalAlignment = Alignment.CenterHorizontally
 	)
 	{
-		when(page) {
-			KeyboardPage.Letters -> {
-				KeyboardKeyRow(topLetterKeys, connectionViewModel)
-				KeyboardKeyRow(middleLetterKeys, connectionViewModel)
-				KeyboardKeyRow(bottomLetterKeys, connectionViewModel)
+		fun sendKey(key : String) {
+			val modifiers = buildList {
+				if(shift) add("LSHIFT")
+				if(control) add("CONTROL")
+				if(windows) add("LWIN")
+				if(alt) add("LMENU")
+				if(altGr) add("RMENU")
 			}
 
-			KeyboardPage.Numbers -> {
-				KeyboardKeyRow(numberKeys.take(5), connectionViewModel)
-				KeyboardKeyRow(numberKeys.drop(5), connectionViewModel)
+			if(modifiers.isEmpty()) {
+				connectionViewModel.keypress(key)
+				return
+			}
+
+			val steps = JSONArray()
+			modifiers.forEach{ modifier ->
+				steps.put(JSONObject()
+						.put("type", "keyboard.down")
+						.put("payload", modifier)
+				)
+			}
+			steps.put(JSONObject()
+				.put("type", "keyboard.press")
+				.put("payload", key)
+			)
+			modifiers.forEach{ modifier ->
+				steps.put(JSONObject()
+					.put("type", "keyboard.up")
+					.put("payload", modifier)
+				)
+			}
+
+			connectionViewModel.executeMacro(steps)
+
+			shift = false
+			control = false
+			alt = false
+			altGr = false
+		}
+
+		when(page) {
+			KeyboardPage.Letters -> {
+				KeyboardKeyRow(numberKeys, ::sendKey)
+				KeyboardKeyRow(topLetterKeys, ::sendKey)
+				KeyboardKeyRow(middleLetterKeys, ::sendKey)
+				Row(
+					modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+					horizontalArrangement = Arrangement.spacedBy(4.dp)
+				) {
+					Button(
+						onClick = { shift = !shift },
+						modifier = Modifier.weight(1f).height(32.dp),
+						contentPadding = PaddingValues(0.dp),
+						shape = RoundedCornerShape(4.dp),
+						colors = ButtonDefaults.buttonColors(
+							containerColor = if(shift) Color.DarkGray else Color.LightGray,
+							contentColor = if(shift) Color.White else Color.Black,
+						)
+					) {
+						Icon(imageVector = Icons.Outlined.KeyboardCapslock, contentDescription = "Shift")
+					}
+
+					bottomLetterKeys.forEach { (label, key) ->
+						Button(
+							onClick = {sendKey(key)},
+							modifier = Modifier.weight(1f).height(32.dp),
+							contentPadding = PaddingValues(0.dp),
+							shape = RoundedCornerShape(4.dp),
+							colors = ButtonDefaults.buttonColors(
+								containerColor = Color.LightGray,
+								contentColor = Color.Black
+							)
+						) {
+							Text(text = label, maxLines = 1, fontSize = 16.sp)
+						}
+					}
+
+					IconButton(
+						onClick = {connectionViewModel.keypress("BACK")},
+						modifier = Modifier.weight(1f).height(32.dp),
+						shape = RoundedCornerShape(4.dp),
+						colors = IconButtonDefaults.iconButtonColors(
+							containerColor = Color.LightGray,
+							contentColor = Color.Black)
+					) {
+						Icon(
+							imageVector = Icons.AutoMirrored.Filled.Backspace,
+							contentDescription = "Backspace"
+						)
+					}
+				}
 			}
 
 			KeyboardPage.AccentedLetters -> {
-				KeyboardKeyRow(accentedLetterKeys.take(5), connectionViewModel)
-				KeyboardKeyRow(accentedLetterKeys.drop(5), connectionViewModel)
+				KeyboardKeyRow(accentedLetterKeys.take(5), ::sendKey)
+				KeyboardKeyRow(accentedLetterKeys.drop(5), ::sendKey)
 			}
+		}
+
+		Row(
+			modifier = Modifier.fillMaxWidth(),
+			horizontalArrangement = Arrangement.spacedBy(4.dp)
+		) {
+			val modifier = Modifier.weight(1f).height(32.dp)
+			ModifierToggle("Ctrl", control, {control = !control}, modifier)
+			ModifierToggle("Win", windows, {windows = !windows}, modifier)
+
+			Button(
+				onClick = {connectionViewModel.keypress("SPACE")},
+				modifier = Modifier.weight(3f).height(32.dp),
+				contentPadding = PaddingValues(0.dp),
+				shape = RoundedCornerShape(4.dp),
+				colors = ButtonDefaults.buttonColors(
+					containerColor = Color.LightGray,
+					contentColor = Color.Black
+				)
+			) {
+				Text("")
+			}
+
+			ModifierToggle("Alt", alt, {alt = !alt}, modifier)
+			ModifierToggle("altGr", altGr, {altGr = !altGr}, modifier)
 		}
 
 		Row(
@@ -100,15 +221,6 @@ fun KeyboardControlPanel(connectionViewModel: ConnectionViewModel = viewModel())
 			}
 
 			Button(
-				onClick = { page = KeyboardPage.Numbers},
-				modifier = Modifier.weight(1f),
-				contentPadding = PaddingValues(0.dp),
-				shape = RoundedCornerShape(4.dp)
-			) {
-				Text("123")
-			}
-
-			Button(
 				onClick = { page = KeyboardPage.AccentedLetters},
 				modifier = Modifier.weight(1f),
 				contentPadding = PaddingValues(0.dp),
@@ -121,18 +233,15 @@ fun KeyboardControlPanel(connectionViewModel: ConnectionViewModel = viewModel())
 }
 
 @Composable
-private fun KeyboardKeyRow(
-	keys: List<Pair<String,String>>,
-	viewModel: ConnectionViewModel
-) {
+private fun KeyboardKeyRow(keys: List<Pair<String,String>>,	onKeyPress: (String) -> Unit) {
 	Row(
 		modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
-		horizontalArrangement = Arrangement.spacedBy(2.dp)
+		horizontalArrangement = Arrangement.spacedBy(4.dp)
 	) {
 		keys.forEach { (label, key) ->
 			Button(
-				onClick = {viewModel.keypress(key)},
-				modifier = Modifier.weight(1f).height(48.dp),
+				onClick = {onKeyPress(key)},
+				modifier = Modifier.weight(1f).height(32.dp),
 				contentPadding = PaddingValues(0.dp),
 				shape = RoundedCornerShape(4.dp),
 				colors = ButtonDefaults.buttonColors(
@@ -143,5 +252,21 @@ private fun KeyboardKeyRow(
 				Text(text = label, maxLines = 1, fontSize = 16.sp)
 			}
 		}
+	}
+}
+
+@Composable
+private fun ModifierToggle(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+	Button(
+		onClick = onClick,
+		modifier = modifier,
+		contentPadding = PaddingValues(0.dp),
+		shape = RoundedCornerShape(4.dp),
+		colors = ButtonDefaults.buttonColors(
+			containerColor = if(selected) Color.DarkGray else Color.LightGray,
+			contentColor = if(selected) Color.White else Color.Black,
+		)
+	) {
+		Text(label, maxLines = 1)
 	}
 }
